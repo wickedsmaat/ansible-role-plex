@@ -1,0 +1,77 @@
+---
+- name: Create the media group
+  ansible.builtin.group:
+    name: media
+    gid: 3000
+    state: present
+
+- name: Create the media user
+  ansible.builtin.user:
+    name: media
+    uid: 3000
+    group: media
+    shell: /bin/bash
+    create_home: true
+    home: /home/media
+    state: present
+
+- name: Ensure NFS mounts are configured and mounted
+  ansible.posix.mount:
+    path: "{{ item.path }}"
+    src: "{{ item.src }}"
+    fstype: nfs4
+    opts: "defaults,rw"
+    state: mounted
+  loop:
+    - { path: "/opt/media",  src: "truenas.int.snyderfamily.co:/mnt/splish-splash/media" }
+    - { path: "/opt/backup", src: "backup.int.snyderfamily.co:/mnt/puddle-party/plex-backup" }
+
+- name: Add Plex Repo
+  ansible.builtin.yum_repository:
+    name: PlexRepo
+    description: Plex - RHEL {{ ansible_distribution_major_version }} - $basearch
+    baseurl: https://downloads.plex.tv/repo/rpm/$basearch/
+    gpgcheck: false
+    enabled: true
+  tags: plex_repo
+
+- name: Kill the DNF Cache
+  ansible.builtin.dnf:
+    expire-cache: true
+
+- name: Rebuild the DNF Cache
+  ansible.builtin.dnf:
+    update_cache: true
+
+- name: Ensure Plex and other required apps are installed
+  ansible.builtin.dnf:
+    name: plexmediaserver
+    state: present
+
+- name: Ensure Plex is enabled, but not running
+  ansible.builtin.systemd:
+    name: plexmediaserver
+    state: stopped
+    enabled: false
+    daemon_reload: true
+
+- name: Ensure Plex overrides are configured
+  ansible.builtin.file:
+    path: /etc/systemd/system/plexmediaserver.service.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Place Overrides File
+  ansible.builtin.copy:
+    src: /home/ansible/files/plex/plex-override.conf
+    dest: /etc/systemd/system/plexmediaserver.service.d/override.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Reload SystemD
+  ansible.builtin.systemd:
+    daemon_reload: true
+...
