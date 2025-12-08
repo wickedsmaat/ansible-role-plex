@@ -1,1 +1,14 @@
 ---
+galaxy_info:
+  author: thisguyshouldworkforus
+  description: Ansible Roles for stuff and junk
+  company: Snyder Business And Technology Consulting, LLC (SBATC)
+  license: MIT
+  min_ansible_version: 2.1
+  galaxy_tags:
+    - 1.0.0
+    - plex
+    - media-server
+    - plexmediaserver
+dependencies: []
+...
