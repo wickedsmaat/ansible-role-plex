@@ -2,7 +2,7 @@
 galaxy_info:
   author: thisguyshouldworkforus
   description: Ansible Roles for stuff and junk
-  company: Snyder Business And Technology Consulting, LLC (SBATC)
+  company: "Hire This Guy, LLC."
   license: MIT
   min_ansible_version: 2.1
   galaxy_tags:
