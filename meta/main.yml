@@ -4,7 +4,7 @@ galaxy_info:
   description: Ansible role to install and configure Plex Media Server.
   company: "Hire This Guy, LLC."
   license: MIT
-  min_ansible_version: 2.1
+  min_ansible_version: '2.9'
   galaxy_tags:
     - plex
     - media
