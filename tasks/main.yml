@@ -13,7 +13,7 @@
     that:
       - ansible_architecture == 'x86_64'
       - ansible_os_family | lower == 'redhat'
-  fail_msg: "This role only supports x86_64 architecture on RedHat-based systems."
+    fail_msg: "This role only supports x86_64 architecture on RedHat-based systems."
 
 - name: Create the media group
   ansible.builtin.group:
