@@ -1,97 +1,130 @@
 # ansible-role-plex
-Overview
 
-This role installs and configures Plex Media Server on a RHEL-based homelab system.
-It creates a dedicated service user, mounts media directories from a NAS, configures the official Plex repository, installs Plex, and adds service overrides to ensure Plex starts under the correct user and only after media storage is available.
+## Overview
 
-The end result is a stable, predictable, NAS-backed Plex deployment suitable for long-term homelab usage.
+This role installs and configures **Plex Media Server** on a RHEL-based homelab system.
+It creates a dedicated service user, mounts NAS-backed media and backup directories, configures the official Plex repository, installs Plex, and deploys systemd overrides to ensure Plex starts under the correct user and only after network storage is available.
+
+The result is a stable, predictable Plex deployment that cleanly integrates with NAS storage and supports long-term homelab uptime.
+
+---
+
+## Required Variables
+
+This role **requires** definition of at least one Plex NFS mount.
+These mounts represent the media libraries Plex will index and any backup or metadata storage the system relies on.
+
+| Variable          | Description                                               |
+| ----------------- | --------------------------------------------------------- |
+| `plex_nfs_mounts` | A list of NFS mount definitions (`path` + `src`) for Plex |
+
+Each list item **must** contain:
+
+* `path` — the local mount point on the Plex server
+* `src` — the NAS NFS export that should be mounted
+
+These mounts will be configured persistently (via `/etc/fstab`) and must exist for Plex to function correctly.
+
+You may define these variables:
+
+* in the calling playbook
+* in `group_vars` / `host_vars`
+* or passed inline when including the role
+
+**Example:**
+
+```yaml
+- name: Deploy Plex Media Server
+  hosts: plex
+  vars:
+    plex_nfs_mounts:
+      - path: "/opt/media"
+        src: "truenas.int.snyderfamily.co:/mnt/splish-splash/media"
+      - path: "/opt/backup"
+        src: "backup.int.snyderfamily.co:/mnt/puddle-party/plex-backup"
+
+  roles:
+    - plex
+```
+
+The above structure mirrors how mounts are defined in `defaults/main.yml`, allowing you to override or extend them depending on your environment.
+
+---
 
 ## Task-by-Task Breakdown
-Creating the Media Group
 
-This task creates a system group named media (GID 3000).
-The group ownership is used for Plex and for all mounted media directories.
-This ensures consistent permissions across local and network-mounted storage.
+### Creating the Media Group
 
-Creating the Media User
+A system group named **media** (GID 3000) is created.
+This group owns the Plex-related directories, ensuring consistent permissions across local and NFS-mounted paths.
 
-A media user (UID 3000) is created and assigned to the media group.
-This user will run the Plex service instead of the default plex user.
-Running Plex as a custom media user ensures that permissions align naturally with NAS-mounted storage.
+### Creating the Media User
 
-Creating the Media User’s Home Directory
+A dedicated **media** user (UID 3000) is created and added to the media group.
+This user replaces the default Plex service account so that NAS permissions remain consistent.
 
-This task explicitly creates /home/media with correct owner and permissions.
-Some future tasks rely on this path existing, especially for defaults and user environment consistency.
-Even if Plex doesn’t use the home directory directly, this maintains proper OS hygiene.
+### Creating the Media User’s Home Directory
 
-Mounting NFS Media Share
+The role creates `/home/media` with correct ownership and permissions.
+While Plex does not use this directory directly, maintaining proper home directory structure prevents OS inconsistencies.
 
-This task mounts an NFS export (e.g., from a TrueNAS server) to /opt/media.
-It also writes a persistent entry to /etc/fstab.
-By mounting through NFS, the Plex host can index large media libraries without storing them locally.
+### Mounting NFS Media Share(s)
 
-Mounting NFS Backup Share
+Using the list provided in **plex_nfs_mounts**, each mount is:
 
-Similarly, this mounts a backup location used for Plex metadata, exports, or snapshots.
-It is stored separately to avoid filling the main filesystem.
-This keeps Plex’s metadata safe and future-proofs the server.
+* created as a directory
+* mounted via NFS
+* written to `/etc/fstab` for persistence
 
-Refreshing DNF Cache After Repository Changes
+This allows Plex to read large media libraries without requiring local storage.
 
-Whenever new repositories are added, stale metadata can cause installation failures.
-This task forces DNF to expire cached data so the system fetches the newest metadata.
-It ensures the Plex repository will be recognized immediately.
+### Mounting NFS Backup Share(s)
 
-Adding the Official Plex Repository
+Backup or metadata storage mounts are handled the same way, ensuring Plex has a safe location for exports and snapshots.
 
-This task adds Plex’s official RPM repository to the system’s repo list.
-Plex ships its own repository to ensure users always receive the latest stable server builds.
-Using the official repo also ensures proper GPG verification and update management.
+### Refreshing DNF Cache After Repository Changes
 
-Forcing Another DNF Cache Refresh
+DNF metadata is expired to avoid installation failures when repositories change.
 
-Because a new repo has been added, the cache is refreshed again.
-This guarantees that the plexmediaserver package can be located during installation.
-It reduces installation errors caused by stale repository metadata.
+### Adding the Official Plex Repository
 
-Installing Plex Media Server
+The official Plex RPM repository is added, enabling continuous updates and verified package installation.
 
-This task installs the plexmediaserver package from the Plex repo.
-Installation includes the service, binaries, web interface, and supporting libraries.
-After installation, the service exists but does not yet run under the media user.
+### Forcing Another DNF Cache Refresh
 
-Stopping and Disabling the Default Plex Service
+A second refresh ensures the repository is detected immediately before installation.
 
-By default, Plex is enabled to start at boot and runs as the plex user.
-This task disables the service temporarily so we can override its configuration.
-Stopping it ensures no lingering processes interfere with the new settings.
+### Installing Plex Media Server
 
-Creating the Systemd Override Directory for Plex
+The `plexmediaserver` package is installed, providing the primary service binary, supporting libraries, and web UI.
 
-This task creates /etc/systemd/system/plexmediaserver.service.d/.
-Systemd uses this folder for custom configuration overrides.
-Without it, we could not modify how Plex runs or what user it runs as.
+### Stopping and Disabling the Default Plex Service
 
-Deploying the Plex Systemd Override File
+To reconfigure systemd startup behavior, the default service is temporarily stopped and disabled.
 
-This override file instructs systemd to:
+### Creating the Systemd Override Directory
 
-Run Plex as the media user
+The folder `/etc/systemd/system/plexmediaserver.service.d/` is created to hold the override configuration.
 
-Ensure Plex starts only after media mounts are online
+### Deploying the Plex Systemd Override
 
-Enforce dependency on /opt/media
+The override ensures Plex:
 
-This avoids Plex starting too early, which can result in empty libraries or scanning failures.
+* runs as the **media** user
+* starts only after NFS media paths are ready
+* depends on `/opt/media` to prevent early startup
 
-Reloading Systemd to Apply Service Changes
+This eliminates common issues like empty libraries or failed scans at boot.
 
-After placing the override file, systemd must reload its configuration.
-This ensures that the next time Plex starts, it uses the updated user identity and dependency rules.
-Without this reload, systemd would ignore the new override.
+### Reloading Systemd to Apply Service Changes
+
+Systemd is reloaded so the override takes effect.
+
+---
 
 ## Summary
 
-This role fully configures a production-ready Plex Media Server for homelab use.
-It handles storage mounts, user identity, repository setup, and service overrides to ensure a stable, predictable Plex deployment backed by network storage.
+This role fully configures a production-grade Plex Media Server backed by NFS storage.
+It ensures correct user identity, reliable mounting of media and backup directories, correct repository configuration, and robust service startup sequencing.
+
+By defining the **required variable** `plex_nfs_mounts`, you guarantee Plex launches in a consistent, storage-aware environment suitable for homelab use.

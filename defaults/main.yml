@@ -1,1 +1,6 @@
 ---
+plex_nfs_mounts:
+  - path:
+    src:
+  - path:
+    src:

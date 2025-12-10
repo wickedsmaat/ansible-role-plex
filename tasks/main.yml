@@ -1,30 +1,44 @@
 ---
+- name: Validate plex_nfs_mounts structure
+  assert:
+    that:
+      - plex_nfs_mounts is sequence
+      - plex_nfs_mounts | select('mapping') | list | length == plex_nfs_mounts | length
+      - plex_nfs_mounts | selectattr('path', 'defined') | list | length == plex_nfs_mounts | length
+      - plex_nfs_mounts | selectattr('src',  'defined') | list | length == plex_nfs_mounts | length
+    fail_msg: "plex_nfs_mounts must be a list of dictionaries with 'path' and 'src' defined."
+
+- name: Assert requirements are met
+  ansible.builtin.assert:
+  that:
+    - ansible_architecture == 'x86_64'
+    - ansible_os_family | lower == 'redhat'
+  fail_msg: "This role only supports x86_64 architecture on RedHat-based systems."
+
 - name: Create the media group
   ansible.builtin.group:
-    name: media
-    gid: 3000
-    state: present
+  name: media
+  gid: 3000
+  state: present
 
 - name: Create the media user
   ansible.builtin.user:
-    name: media
-    uid: 3000
-    group: media
-    shell: /bin/bash
-    create_home: true
-    home: /home/media
-    state: present
+  name: media
+  uid: 3000
+  group: media
+  shell: /bin/bash
+  create_home: true
+  home: /home/media
+  state: present
 
 - name: Ensure NFS mounts are configured and mounted
   ansible.posix.mount:
-    path: "{{ item.path }}"
-    src: "{{ item.src }}"
-    fstype: nfs4
-    opts: "defaults,rw"
-    state: mounted
-  loop:
-    - { path: "/opt/media",  src: "truenas.int.snyderfamily.co:/mnt/splish-splash/media" }
-    - { path: "/opt/backup", src: "backup.int.snyderfamily.co:/mnt/puddle-party/plex-backup" }
+  path: "{{ item.path }}"
+  src: "{{ item.src }}"
+  fstype: nfs4
+  opts: "defaults,rw"
+  state: mounted
+  loop: "{{ plex_nfs_mounts }}"
 
 - name: Add Plex Repo
   ansible.builtin.yum_repository:
@@ -65,7 +79,7 @@
 
 - name: Place Overrides File
   ansible.builtin.copy:
-    src: /home/ansible/files/plex/plex-override.conf
+    src: files/plex-override.conf
     dest: /etc/systemd/system/plexmediaserver.service.d/override.conf
     owner: root
     group: root
