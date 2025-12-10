@@ -1,6 +1,6 @@
 ---
 - name: Validate plex_nfs_mounts structure
-  assert:
+  ansible.builtin.assert:
     that:
       - plex_nfs_mounts is sequence
       - plex_nfs_mounts | select('mapping') | list | length == plex_nfs_mounts | length
@@ -10,9 +10,9 @@
 
 - name: Assert requirements are met
   ansible.builtin.assert:
-  that:
-    - ansible_architecture == 'x86_64'
-    - ansible_os_family | lower == 'redhat'
+    that:
+      - ansible_architecture == 'x86_64'
+      - ansible_os_family | lower == 'redhat'
   fail_msg: "This role only supports x86_64 architecture on RedHat-based systems."
 
 - name: Create the media group
