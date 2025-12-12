@@ -17,27 +17,27 @@
 
 - name: Create the media group
   ansible.builtin.group:
-  name: media
-  gid: 3000
-  state: present
+    name: media
+    gid: 3000
+    state: present
 
 - name: Create the media user
   ansible.builtin.user:
-  name: media
-  uid: 3000
-  group: media
-  shell: /bin/bash
-  create_home: true
-  home: /home/media
-  state: present
+    name: media
+    uid: 3000
+    group: media
+    shell: /bin/bash
+    create_home: true
+    home: /home/media
+    state: present
 
 - name: Ensure NFS mounts are configured and mounted
   ansible.posix.mount:
-  path: "{{ item.path }}"
-  src: "{{ item.src }}"
-  fstype: nfs4
-  opts: "defaults,rw"
-  state: mounted
+    path: "{{ item.path }}"
+    src: "{{ item.src }}"
+    fstype: nfs4
+    opts: "defaults,rw"
+    state: mounted
   loop: "{{ plex_nfs_mounts }}"
 
 - name: Add Plex Repo

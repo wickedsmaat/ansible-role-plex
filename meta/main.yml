@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   author: thisguyshouldworkforus
-  description: Ansible role to install and configure Plex Media Server.
+  description: Ansible role to install and configure Plex Media Server on X86_64 RedHat-based systems.
   company: "Hire This Guy, LLC."
   license: MIT
   min_ansible_version: '2.9'
