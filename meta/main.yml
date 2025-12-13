@@ -1,14 +1,20 @@
 ---
 galaxy_info:
-  author: thisguyshouldworkforus
+  author: Alexander Snyder
   description: Ansible role to install and configure Plex Media Server on X86_64 RedHat-based systems.
-  company: "Hire This Guy, LLC."
+  company: ThisGuyShouldWorkFor.Us
   license: MIT
-  min_ansible_version: '2.9'
+  min_ansible_version: "2.9"
+  platforms:
+    - name: EL # RedHat, and RHEL Clones
+
   galaxy_tags:
     - plex
     - media
     - server
     - plexmediaserver
+
+collections:
+  - ansible.posix
+
 dependencies: []
-...
